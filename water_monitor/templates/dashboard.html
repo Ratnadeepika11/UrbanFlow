@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart City | Advanced Water Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8f9fa; font-family: 'Inter', sans-serif; }
+        .sidebar { height: 100vh; background: #1a1c1e; color: white; position: fixed; width: 250px; padding: 25px; }
+        .main { margin-left: 270px; padding: 30px; }
+        .card { border: none; border-radius: 12px; transition: transform 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .alert-waste { border-left: 6px solid #dc3545; background-color: #fff5f5; }
+        .alert-leak { border-left: 6px solid #fd7e14; background-color: #fffaf0; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h4 class="text-info mb-4"><bold>🏙️ UrbanFlow </bold> </h4>
+        <p class="small text-muted">SYSTEM STATUS: ACTIVE</p>
+        <hr>
+        <div class="mb-3">📊 Dashboard</div>
+        <a href="/admin" class="text-white-50 text-decoration-none small">⚙️ Admin Panel</a>
+    </div>
+
+    <div class="main">
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-top border-primary border-4 text-center">
+                    <small class="text-muted"><b>City Supply</b><br>(Sum of All Sector Inflow)</small>
+                    <h4 class="fw-bold">{{ stats.total_inflow }} L</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-top border-success border-4 text-center">
+                    <small class="text-muted"><b>Billed Usage</b><br>(Sum of All Sector Consumption)</small>
+                    <h4 class="fw-bold">{{ stats.total_outflow }} L</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-top border-warning border-4 text-center">
+                    <small class="text-muted"><b>System Leakage (NRW)</b><br>(NRW Loss = Total Inflow-Total Outflow)</small>
+                    <h4 class="fw-bold">{{ stats.nrw_loss }} L</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-top border-danger border-4 text-center">
+                    <small class="text-muted"><b>Efficiency Loss</b><br>(Loss%=(NRW Loss/Total inflow)*100)</small>
+                    <h4 class="fw-bold text-danger">{{ stats.loss_percent }}%</h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card p-4 mb-4">
+                    <h6 class="text-muted mb-3">Pattern Detection Graph</h6>
+                    <img src="data:image/png;base64,{{ graph }}" class="img-fluid rounded">
+                    <div class="mt-2 small text-center">
+                        <span class="badge bg-primary">Normal</span>
+                        <span class="badge bg-danger">Wastage (Over Threshold)</span>
+                        <span class="badge bg-warning text-dark">Leakage (Pipe Loss)</span>
+                    </div>
+                </div>
+
+                <div class="card p-4">
+                    <h5 class="mb-3">Real-time Sector Audit</h5>
+                    <table class="table align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Sector</th>
+                                <th>Usage / Threshold</th>
+                                <th>Leak Loss</th>
+                                <th>Sensor Alerts</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in sector_data %}
+                            <tr class="{% if item.threshold_alert %}alert-waste{% elif item.leak_alert %}alert-leak{% endif %}">
+                                <td><strong>{{ item.name }}</strong></td>
+                                <td>
+                                    {{ item.usage }} / <span class="text-muted">{{ item.limit }} L</span>
+                                    {% if item.threshold_alert %}<br><small class="text-danger fw-bold">🛑 CONSUMPTION WASTE</small>{% endif %}
+                                </td>
+                                <td>
+                                    {{ item.loss }} L
+                                    {% if item.leak_alert %}<br><small class="text-warning fw-bold">⚠️ PIPE LEAK</small>{% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge {% if item.quality_alert %}bg-danger{% else %}bg-info text-dark{% endif %}">pH: {{ item.ph }}</span>
+                                    <span class="badge {% if item.pressure_alert %}bg-danger{% else %}bg-secondary{% endif %}">{{ item.pressure }} bar</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card p-4 shadow-sm mb-4 bg-dark text-white">
+                    <h5 class="mb-3">Smart Meter Sync</h5>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label small">Target Sector</label>
+                            <select name="sector_id" class="form-select border-0">
+                                {% for s in sectors %}<option value="{{ s.id }}">{{ s.sector_name }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small">New Reading (Liters)</label>
+                            <input type="number" name="usage" class="form-control border-0" required>
+                        </div>
+                        <button class="btn btn-info w-100 py-2">Push to Database</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
